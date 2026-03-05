@@ -173,3 +173,13 @@ body {
     pointer-events: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 .toast.show { opacity: 1; }
+
+/* 💡 .hidden이 붙으면 무조건 숨기도록 강제함 */
+.hidden { 
+    display: none !important; 
+}
+
+/* 💡 설정창(modal)에서 .hidden이 빠지면 화면 정중앙에 정렬하여 표시함 */
+#settings-modal:not(.hidden) {
+    display: flex !important;
+}

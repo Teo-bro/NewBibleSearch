@@ -6,10 +6,11 @@
     let currentVerse = null; 
     let displayMode = "standard"; 
     let languageMode = "kr"; 
-    let isCaseSensitive = false; // 💡 대소문자 구분 상태 추가
+    let isCaseSensitive = false; 
+    let currentFontSize = "16px"; // 💡 글자 크기 상태 추가
     let toastTimeout; 
 
-    // 타임 로딩(자동 순차 렌더링) 변수
+    // 타임 로딩 변수
     let currentSearchResults = [];
     let currentSearchWord = "";
     let currentSearchOccurrences = 0;
@@ -250,6 +251,7 @@
         displayChapter(currentBook, chapter);
     }
 
+    // 💡 읽기 모드의 구절 양식은 업로드하신 원본 파일과 똑같이 ${verseNum}만 나오게 되돌렸습니다.
     function displayChapter(bookName, chapter, highlightVerses = []) {
         isSearchActive = false; 
         clearTimeout(renderTimer);
@@ -275,8 +277,8 @@
             const verseNumClass = isHighlighted ? 'verse-number verse-highlight' : 'verse-number';
             const uniqueId = `verse-${bookName}-${chapter}-${verseNum}`;
             
-            outputKr += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${bookName} ${chapter}:${verseNum}')" title="${bookName} ${chapter}:${verseNum} 출력 모드로 보기">${chapter}:${verseNum}</span> ${verseTextKr}</p>`;
-            outputEn += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${enBookName} ${chapter}:${verseNum}')" title="${enBookName} ${chapter}:${verseNum} View">${chapter}:${verseNum}</span> ${verseTextEn}</p>`;
+            outputKr += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${bookName} ${chapter}:${verseNum}')" title="${bookName} ${chapter}:${verseNum} 출력 모드로 보기">${verseNum}</span> ${verseTextKr}</p>`;
+            outputEn += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${enBookName} ${chapter}:${verseNum}')" title="${enBookName} ${chapter}:${verseNum} View">${verseNum}</span> ${verseTextEn}</p>`;
         }
         
         document.getElementById('output-kr').innerHTML = outputKr;
@@ -308,7 +310,6 @@
             for (const chapter in targetData[book]) {
                 for (const verse in targetData[book][chapter]) {
                     const textTarget = targetData[book][chapter][verse];
-                    // 💡 대소문자 구분 로직 적용 (isCaseSensitive가 true이면 'g', false이면 'gi')
                     const regexFlags = isCaseSensitive ? 'g' : 'gi';
                     const regex = new RegExp(word, regexFlags);
                     const matches = textTarget.match(regex);
@@ -365,7 +366,6 @@
         
         const chunkEnd = renderAll ? currentSearchResults.length : Math.min(renderedResultCount + RENDER_CHUNK_SIZE, currentSearchResults.length);
         
-        // 💡 렌더링 시에도 대소문자 플래그 동기화
         const regexFlags = isCaseSensitive ? 'g' : 'gi';
         
         for (let idx = renderedResultCount; idx < chunkEnd; idx++) {
@@ -435,7 +435,6 @@
         document.getElementById('navigation-buttons').classList.add('hidden');
         
         query = query.replace(/(\d)\.(\d)/g, '$1:$2');
-        // 💡 정규식 수정: 띄어쓰기된 책 이름과 영문 책 이름의 숫자를 모두 정확하게 잡아냄 (Req 8 해결)
         const refRegex = /((?:\d\s*)?[가-힣a-zA-Z]+(?:\s+[가-힣a-zA-Z]+)*)\s*(\d+)[:]([\d,\-]+)/g;
         let matches = [...query.matchAll(refRegex)];
         let stripped = query.replace(refRegex, '').replace(/[, ]/g, '').trim();
@@ -672,7 +671,6 @@
         setTimeout(alignVerseHeights, 10);
     }
 
-    // 💡 1개로 통합된 언어 토글 로직
     function changeLanguageMode(mode) {
         languageMode = mode;
         const toggleBtn = document.getElementById('lang-toggle-button');
@@ -681,33 +679,62 @@
         if (mode === 'kr') {
             toggleBtn.textContent = '한글 모드';
             document.getElementById('output-en').classList.add('hidden');
-            copyEnBtn.classList.add('hidden'); // 영어 복사 버튼 숨김
+            copyEnBtn.classList.add('hidden'); 
         } else {
             toggleBtn.textContent = '한영 모드';
             document.getElementById('output-en').classList.remove('hidden');
-            copyEnBtn.classList.remove('hidden'); // 영어 복사 버튼 보임
+            copyEnBtn.classList.remove('hidden'); 
         }
         
         setTimeout(alignVerseHeights, 10);
     }
 
+    // 💡 글자 크기 변경 함수 추가
+    function changeFontSize(size) {
+        currentFontSize = size;
+        document.getElementById('output-kr').style.fontSize = size;
+        document.getElementById('output-en').style.fontSize = size;
+        
+        document.querySelectorAll('.btn-size').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.btn-size[data-size="${size}"]`).classList.add('active');
+        
+        setTimeout(alignVerseHeights, 50);
+    }
+
     function setupEventListeners() {
-        // 💡 단일 버튼 언어 토글 이벤트
+        // 모달창 여닫기 로직
+        document.getElementById('settings-open-btn').addEventListener('click', () => {
+            document.getElementById('settings-modal').classList.remove('hidden');
+        });
+        document.getElementById('settings-close-btn').addEventListener('click', () => {
+            document.getElementById('settings-modal').classList.add('hidden');
+        });
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('settings-modal')) {
+                document.getElementById('settings-modal').classList.add('hidden');
+            }
+        });
+
+        // 💡 체크박스로 변경된 대소문자 구분 로직
+        document.getElementById('case-sensitive-checkbox').addEventListener('change', (e) => {
+            isCaseSensitive = e.target.checked;
+            if (isSearchActive && currentSearchWord) {
+                executeSearch(document.getElementById('search-input').value.trim()); 
+            }
+        });
+
+        // 💡 글자 크기 버튼 이벤트
+        document.querySelectorAll('.btn-size').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                changeFontSize(e.target.getAttribute('data-size'));
+            });
+        });
+
         document.getElementById('lang-toggle-button').addEventListener('click', () => {
             const newMode = languageMode === 'kr' ? 'kren' : 'kr';
             changeLanguageMode(newMode);
         });
 
-        // 💡 대소문자 구분 토글 이벤트
-        document.getElementById('case-toggle-button').addEventListener('click', () => {
-            isCaseSensitive = !isCaseSensitive;
-            document.getElementById('case-toggle-button').textContent = isCaseSensitive ? '대소문자 구분 함' : '대소문자 구분 안함';
-            if (isSearchActive && currentSearchWord) {
-                executeSearch(document.getElementById('search-input').value.trim()); // 옵션 변경 시 재검색
-            }
-        });
-
-        // 💡 드롭다운 형식 변경 이벤트
         document.getElementById('format-dropdown').addEventListener('change', (e) => {
             changeDisplayMode(e.target.value);
         });
@@ -739,8 +766,6 @@
                 currentChapter = chapter;
                 currentVerse = verses.length > 0 ? verses[0] : null;
                 
-                // 💡 Ctrl+Z 1장으로 튕기는 버그 완벽 해결: 
-                // 버튼 클릭 이벤트를 트리거하지 않고 UI와 상태만 변경하여 추가적인 history 저장을 방지함
                 document.querySelectorAll('.book-button').forEach(btn => btn.classList.remove('active'));
                 const bookBtn = document.querySelector(`.book-button[data-book="${book}"]`);
                 if (bookBtn) bookBtn.classList.add('active');
@@ -802,7 +827,6 @@
             else if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redoAction(); }
         });
 
-        // 수동 드래그 복사 방지 로직
         document.addEventListener('copy', (e) => {
             const selection = document.getSelection();
             if (!selection.rangeCount) return;
@@ -826,7 +850,6 @@
         });
     }
 
-    // 💡 저장 상태에 isCaseSensitive도 기록하여 되돌리기 지원
     function saveState() {
         if (isRestoring) return;
         historyStack.push({
@@ -882,9 +905,8 @@
         document.getElementById('output-kr').innerHTML = state.outputKr;
         document.getElementById('output-en').innerHTML = state.outputEn || '';
 
-        // 드롭다운 및 버튼 UI 동기화
         document.getElementById('format-dropdown').value = displayMode;
-        document.getElementById('case-toggle-button').textContent = isCaseSensitive ? '대소문자 구분 함' : '대소문자 구분 안함';
+        document.getElementById('case-sensitive-checkbox').checked = isCaseSensitive;
 
         const toggleBtn = document.getElementById('lang-toggle-button');
         const copyEnBtn = document.getElementById('copy-en-button');
@@ -919,6 +941,7 @@
         setTimeout(alignVerseHeights, 10);
     }
 
+    // 💡 올려주신 원본 코드 양식(\n\n) 그대로 복구
     function prepareContentForCopy(outputElement) {
         const clone = outputElement.cloneNode(true);
         clone.querySelectorAll('br').forEach(br => {
@@ -934,16 +957,13 @@
         headings.forEach(h => h.outerHTML = h.textContent + '\n');
         
         const paras = Array.from(clone.querySelectorAll('p'));
-        if (paras.length > 0) {
-            const lineBreak = isSearchActive ? '\n\n' : '\n';
-            return paras.map(p => p.innerText.trim()).join(lineBreak).trim();
-        }
+        if (paras.length > 0) return paras.map(p => p.innerText.trim()).join('\n\n').trim();
         return clone.innerText.trim();
     }
     
     function changeDisplayMode(mode) {
         displayMode = mode;
-        document.getElementById('format-dropdown').value = mode; // 드롭다운 동기화
+        document.getElementById('format-dropdown').value = mode; 
         
         if (isSearchActive) {
             clearTimeout(renderTimer); 

@@ -703,6 +703,26 @@
 
     function setupEventListeners() {
         // 모달창 여닫기 로직
+        const settingsModal = document.getElementById('settings-modal');
+        const openBtn = document.getElementById('settings-open-btn');
+        const closeBtn = document.getElementById('settings-close-btn');
+    
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                settingsModal.classList.remove('hidden'); // hidden 클래스를 제거하여 화면에 표시
+            });
+        }
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                settingsModal.classList.add('hidden'); // 다시 hidden을 넣어 숨김
+            });
+        }
+        // 창 바깥쪽을 클릭하면 닫히는 기능
+        window.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.add('hidden');
+            }
+        });
         document.getElementById('settings-open-btn').addEventListener('click', () => {
             document.getElementById('settings-modal').classList.remove('hidden');
         });
@@ -1041,3 +1061,4 @@
                 document.body.removeChild(tempTextArea);
             });
     }
+

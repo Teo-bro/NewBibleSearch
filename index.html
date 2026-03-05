@@ -12,32 +12,26 @@
     <div class="content-area">
         <div class="search-area">
             <input type="text" id="search-input" placeholder="단어 검색 또는 구절 검색 (예: 창 1:1, Gen1.1, 1 cor 13:1, 하나님)">
-            <label style="display: flex; align-items: center; margin-left: 10px; font-size: 14px; cursor: pointer; white-space: nowrap;">
-                <input type="checkbox" id="case-sensitive" style="margin-right: 5px;"> 대소문자 구분(영어)
-            </label>
             <button class="button" id="search-button">검색</button>
             <button class="button" id="copy-kr-button">복사(한글)</button>
-            <button class="button hidden" id="copy-en-button">복사(영어)</button>
-        </div>
+            <button class="button hidden" id="copy-en-button">복사(영어)</button> </div>
         
         <div class="controls-container">
-            <div class="lang-buttons">
-                <button class="lang-button active" id="lang-toggle">한글 모드</button>
-            </div>
+            <button class="button" id="lang-toggle-button">한글 모드</button>
+            
+            <select id="format-dropdown" class="dropdown">
+                <option value="standard">기본 모드</option>
+                <option value="abbr">약식 모드</option>
+                <option value="sequence">연속 모드</option>
+                <option value="quote">인용 모드</option>
+                <option value="short-quote">인용 약식 모드</option>
+                <option value="double-quote">겹낫표 인용 모드</option>
+                <option value="double-short-quote">겹낫표 약식 모드</option>
+            </select>
 
-            <div class="format-dropdown-container">
-                <select id="format-select" style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; cursor: pointer;">
-                    <option value="standard">기본</option>
-                    <option value="abbr">약식</option>
-                    <option value="continuous">연속</option>
-                    <option value="quote">낫표</option>
-                    <option value="short-quote">낫표 약식</option>
-                    <option value="double-quote">겹낫표</option>
-                    <option value="double-short-quote">겹낫표 약식</option>
-                </select>
-            </div>
+            <button class="button" id="case-toggle-button">대소문자 구분 안함</button>
 
-            <div class="navigation-buttons invisible" id="navigation-buttons" style="margin-left: auto; white-space: nowrap; gap: 8px;">
+            <div class="navigation-buttons hidden" id="navigation-buttons">
                 <button class="button" id="prev-chapter">이전 장</button>
                 <button class="button" id="next-chapter">다음 장</button>
             </div>

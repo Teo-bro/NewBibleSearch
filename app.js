@@ -6,6 +6,7 @@
     let currentVerse = null; 
     let displayMode = "standard"; 
     let languageMode = "kr"; 
+    let isCaseSensitive = false; // 💡 대소문자 구분 상태 추가
     let toastTimeout; 
 
     // 타임 로딩(자동 순차 렌더링) 변수
@@ -130,9 +131,7 @@
             createBookButtons();
             setupEventListeners();
             loadInitialData();
-            
-            changeLanguageMode(languageMode);
-            document.getElementById('format-select').value = displayMode;
+            document.getElementById('format-dropdown').value = displayMode;
         })
         .catch(error => {
             console.error('데이터를 불러오는데 실패했습니다:', error);
@@ -221,7 +220,7 @@
         if (chapterButtons.length > 0 && chapterButtons[targetChapter - 1]) {
             chapterButtons[targetChapter - 1].classList.add('active');
         }
-        document.getElementById('navigation-buttons').classList.remove('invisible');
+        document.getElementById('navigation-buttons').classList.remove('hidden');
     }
 
     function createChapterButtons(bookName) {
@@ -251,7 +250,6 @@
         displayChapter(currentBook, chapter);
     }
 
-    // 2. 읽기 모드에서는 무조건 기본 모드로 작동하도록 수정
     function displayChapter(bookName, chapter, highlightVerses = []) {
         isSearchActive = false; 
         clearTimeout(renderTimer);
@@ -270,7 +268,6 @@
         let outputEn = `<h2 class="chapter-title" data-verse-id="header">${enBookName} ${chapter}</h2>`;
         
         const verseNums = Object.keys(verses).map(Number).sort((a, b) => a - b);
-        
         for (const verseNum of verseNums) {
             const verseTextKr = verses[verseNum];
             const verseTextEn = versesEn[verseNum] || "";
@@ -278,8 +275,8 @@
             const verseNumClass = isHighlighted ? 'verse-number verse-highlight' : 'verse-number';
             const uniqueId = `verse-${bookName}-${chapter}-${verseNum}`;
             
-            outputKr += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${bookName} ${chapter}:${verseNum}')" title="${bookName} ${chapter}:${verseNum} 출력 모드로 보기">${verseNum}</span> ${verseTextKr}</p>`;
-            outputEn += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${enBookName} ${chapter}:${verseNum}')" title="${enBookName} ${chapter}:${verseNum} View">${verseNum}</span> ${verseTextEn}</p>`;
+            outputKr += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${bookName} ${chapter}:${verseNum}')" title="${bookName} ${chapter}:${verseNum} 출력 모드로 보기">${chapter}:${verseNum}</span> ${verseTextKr}</p>`;
+            outputEn += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${enBookName} ${chapter}:${verseNum}')" title="${enBookName} ${chapter}:${verseNum} View">${chapter}:${verseNum}</span> ${verseTextEn}</p>`;
         }
         
         document.getElementById('output-kr').innerHTML = outputKr;
@@ -307,14 +304,13 @@
         const isEnglishSearch = /[a-zA-Z]/.test(word);
         const targetData = isEnglishSearch ? bibleDataEn : bibleData;
         
-        const isCaseSensitive = document.getElementById('case-sensitive') ? document.getElementById('case-sensitive').checked : false;
-        const flags = isCaseSensitive ? 'g' : 'gi';
-        
         for (const book in targetData) {
             for (const chapter in targetData[book]) {
                 for (const verse in targetData[book][chapter]) {
                     const textTarget = targetData[book][chapter][verse];
-                    const regex = new RegExp(word, flags);
+                    // 💡 대소문자 구분 로직 적용 (isCaseSensitive가 true이면 'g', false이면 'gi')
+                    const regexFlags = isCaseSensitive ? 'g' : 'gi';
+                    const regex = new RegExp(word, regexFlags);
                     const matches = textTarget.match(regex);
                     if (matches) {
                         totalOccurrences += matches.length;
@@ -368,13 +364,14 @@
         let outputEn = "";
         
         const chunkEnd = renderAll ? currentSearchResults.length : Math.min(renderedResultCount + RENDER_CHUNK_SIZE, currentSearchResults.length);
-        const isCaseSensitive = document.getElementById('case-sensitive') ? document.getElementById('case-sensitive').checked : false;
-        const flags = isCaseSensitive ? 'g' : 'gi';
-
+        
+        // 💡 렌더링 시에도 대소문자 플래그 동기화
+        const regexFlags = isCaseSensitive ? 'g' : 'gi';
+        
         for (let idx = renderedResultCount; idx < chunkEnd; idx++) {
             const result = currentSearchResults[idx];
             const { book, chapter, verse, textKr, textEn } = result;
-            const regex = new RegExp(currentSearchWord, flags);
+            const regex = new RegExp(currentSearchWord, regexFlags);
             const highlightedKr = textKr.replace(regex, match => `<span class="highlight">${match}</span>`);
             const highlightedEn = textEn.replace(regex, match => `<span class="highlight">${match}</span>`);
             
@@ -392,7 +389,6 @@
                     pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${enBookName} ${chapter}:${verse}</span><br>${highlightedEn}</p>`;
                     break;
                 case 'abbr':
-                case 'continuous': 
                     pKr = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${abbr} ${chapter}:${verse}</span> ${highlightedKr}</p>`;
                     pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${enAbbr} ${chapter}:${verse}</span> ${highlightedEn}</p>`;
                     break;
@@ -411,6 +407,10 @@
                 case 'double-short-quote':
                     pKr = `<p data-verse-id="${uniqueId}">『${highlightedKr}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">(${abbr} ${chapter}:${verse})</span></p>`;
                     pEn = `<p data-verse-id="${uniqueId}">『${highlightedEn}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">(${enAbbr} ${chapter}:${verse})</span></p>`;
+                    break;
+                case 'sequence':
+                    pKr = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${abbr} ${chapter}:${verse}</span> ${highlightedKr}</p>`;
+                    pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${enAbbr} ${chapter}:${verse}</span> ${highlightedEn}</p>`;
                     break;
             }
             outputKr += pKr;
@@ -432,12 +432,11 @@
             document.getElementById('output-en').innerHTML = '<p class="error" data-verse-id="header"></p>';
             return;
         }
-        document.getElementById('navigation-buttons').classList.add('invisible');
+        document.getElementById('navigation-buttons').classList.add('hidden');
         
         query = query.replace(/(\d)\.(\d)/g, '$1:$2');
-        
-        // 4. '솔로몬의 노래' 등 띄어쓰기가 있는 책 이름도 인식하도록 정규식 수정
-        const refRegex = /([가-힣\s]+|\d?\s*[a-zA-Z\s]+?)\s*(\d+)[:]([\d,\-]+)/g;
+        // 💡 정규식 수정: 띄어쓰기된 책 이름과 영문 책 이름의 숫자를 모두 정확하게 잡아냄 (Req 8 해결)
+        const refRegex = /((?:\d\s*)?[가-힣a-zA-Z]+(?:\s+[가-힣a-zA-Z]+)*)\s*(\d+)[:]([\d,\-]+)/g;
         let matches = [...query.matchAll(refRegex)];
         let stripped = query.replace(refRegex, '').replace(/[, ]/g, '').trim();
         
@@ -552,26 +551,6 @@
                 const abbr = nameToAbbr[book] || book;
                 const verseNums = groupVerses.map(v => v.verse).sort((a, b) => a - b);
                 
-                // 2. 검색 시에만 작동하는 연속 모드
-                if (displayMode === 'continuous') {
-                    verseNums.forEach((v, i) => {
-                        const textKr = bibleData[book]?.[chapter]?.[v] || "";
-                        const textEn = bibleDataEn[book]?.[chapter]?.[v] || "";
-                        const vLabelKr = i === 0 ? `${abbr} ${chapter}:${v}` : `${chapter}:${v}`;
-                        const vLabelEn = i === 0 ? `${enAbbr} ${chapter}:${v}` : `${chapter}:${v}`;
-                        const uniqueId = `vsearch-${groupIndex}-${i}`;
-                        
-                        outputKr += `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${v}">${vLabelKr}</span> ${textKr}</p>`;
-                        outputEn += `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${v}">${vLabelEn}</span> ${textEn}</p>`;
-                    });
-                    
-                    if (verseGroups.length > 1 && groupIndex < verseGroups.length - 1) {
-                        outputKr += `<div style="margin: 10px 0;" data-verse-id="spacer-${groupIndex}"></div>`;
-                        outputEn += `<div style="margin: 10px 0;" data-verse-id="spacer-${groupIndex}"></div>`;
-                    }
-                    return; // 다음 그룹으로 진행
-                }
-
                 let ranges = [], currentRange = [verseNums[0]];
                 for (let i = 1; i < verseNums.length; i++) {
                     if (verseNums[i] === verseNums[i-1] + 1) currentRange.push(verseNums[i]);
@@ -611,6 +590,24 @@
                         pKr = `<p data-verse-id="${uniqueId}">『${combinedKr}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">(${abbr} ${chapter}:${verseRef})</span></p>`;
                         pEn = `<p data-verse-id="${uniqueId}">『${combinedEn}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">(${enAbbr} ${chapter}:${verseRef})</span></p>`;
                         break; 
+                    case 'sequence': {
+                        let krSeq = "";
+                        let enSeq = "";
+                        groupVerses.sort((a, b) => a.verse - b.verse).forEach((v, vIdx) => {
+                            const tKr = bibleData[book]?.[chapter]?.[v.verse] || "";
+                            const tEn = bibleDataEn[book]?.[chapter]?.[v.verse] || "";
+                            if (vIdx === 0) {
+                                krSeq += `<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${v.verse}">${abbr} ${chapter}:${v.verse}</span> ${tKr}`;
+                                enSeq += `<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${v.verse}">${enAbbr} ${chapter}:${v.verse}</span> ${tEn}`;
+                            } else {
+                                krSeq += `<br><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${v.verse}">${chapter}:${v.verse}</span> ${tKr}`;
+                                enSeq += `<br><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${v.verse}">${chapter}:${v.verse}</span> ${tEn}`;
+                            }
+                        });
+                        pKr = `<p data-verse-id="${uniqueId}">${krSeq}</p>`;
+                        pEn = `<p data-verse-id="${uniqueId}">${enSeq}</p>`;
+                        break;
+                    }
                 }
                 outputKr += pKr;
                 outputEn += pEn;
@@ -640,7 +637,6 @@
                         pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">${enBookName} ${chapter}:${verseNum}</span><br>${textEn}</p>`;
                         break;
                     case 'abbr':
-                    case 'continuous':
                         pKr = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">${abbr} ${chapter}:${verseNum}</span> ${textKr}</p>`;
                         pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">${enAbbr} ${chapter}:${verseNum}</span> ${textEn}</p>`;
                         break;
@@ -660,6 +656,10 @@
                         pKr = `<p data-verse-id="${uniqueId}">『${textKr}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">(${abbr} ${chapter}:${verseNum})</span></p>`;
                         pEn = `<p data-verse-id="${uniqueId}">『${textEn}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">(${enAbbr} ${chapter}:${verseNum})</span></p>`;
                         break; 
+                    case 'sequence':
+                        pKr = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">${abbr} ${chapter}:${verseNum}</span> ${textKr}</p>`;
+                        pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">${enAbbr} ${chapter}:${verseNum}</span> ${textEn}</p>`;
+                        break;
                 }
                 outputKr += pKr;
                 outputEn += pEn;
@@ -672,30 +672,43 @@
         setTimeout(alignVerseHeights, 10);
     }
 
+    // 💡 1개로 통합된 언어 토글 로직
     function changeLanguageMode(mode) {
         languageMode = mode;
-        const toggleBtn = document.getElementById('lang-toggle');
+        const toggleBtn = document.getElementById('lang-toggle-button');
         const copyEnBtn = document.getElementById('copy-en-button');
 
         if (mode === 'kr') {
+            toggleBtn.textContent = '한글 모드';
             document.getElementById('output-en').classList.add('hidden');
-            if (copyEnBtn) copyEnBtn.classList.add('hidden');
-            if (toggleBtn) toggleBtn.textContent = '한글 모드';
+            copyEnBtn.classList.add('hidden'); // 영어 복사 버튼 숨김
         } else {
+            toggleBtn.textContent = '한영 모드';
             document.getElementById('output-en').classList.remove('hidden');
-            if (copyEnBtn) copyEnBtn.classList.remove('hidden');
-            if (toggleBtn) toggleBtn.textContent = '한영 모드';
+            copyEnBtn.classList.remove('hidden'); // 영어 복사 버튼 보임
         }
         
         setTimeout(alignVerseHeights, 10);
     }
 
     function setupEventListeners() {
-        document.getElementById('lang-toggle').addEventListener('click', () => {
-            changeLanguageMode(languageMode === 'kr' ? 'kren' : 'kr');
+        // 💡 단일 버튼 언어 토글 이벤트
+        document.getElementById('lang-toggle-button').addEventListener('click', () => {
+            const newMode = languageMode === 'kr' ? 'kren' : 'kr';
+            changeLanguageMode(newMode);
         });
 
-        document.getElementById('format-select').addEventListener('change', (e) => {
+        // 💡 대소문자 구분 토글 이벤트
+        document.getElementById('case-toggle-button').addEventListener('click', () => {
+            isCaseSensitive = !isCaseSensitive;
+            document.getElementById('case-toggle-button').textContent = isCaseSensitive ? '대소문자 구분 함' : '대소문자 구분 안함';
+            if (isSearchActive && currentSearchWord) {
+                executeSearch(document.getElementById('search-input').value.trim()); // 옵션 변경 시 재검색
+            }
+        });
+
+        // 💡 드롭다운 형식 변경 이벤트
+        document.getElementById('format-dropdown').addEventListener('change', (e) => {
             changeDisplayMode(e.target.value);
         });
 
@@ -726,7 +739,20 @@
                 currentChapter = chapter;
                 currentVerse = verses.length > 0 ? verses[0] : null;
                 
-                selectBook(book, true, chapter);
+                // 💡 Ctrl+Z 1장으로 튕기는 버그 완벽 해결: 
+                // 버튼 클릭 이벤트를 트리거하지 않고 UI와 상태만 변경하여 추가적인 history 저장을 방지함
+                document.querySelectorAll('.book-button').forEach(btn => btn.classList.remove('active'));
+                const bookBtn = document.querySelector(`.book-button[data-book="${book}"]`);
+                if (bookBtn) bookBtn.classList.add('active');
+
+                document.querySelectorAll('.chapter-container').forEach(container => container.remove());
+                createChapterButtons(book);
+
+                document.querySelectorAll('.chapter-button').forEach(btn => {
+                    if (parseInt(btn.getAttribute('data-chapter')) === chapter) btn.classList.add('active');
+                });
+                document.getElementById('navigation-buttons').classList.remove('hidden');
+
                 displayChapter(book, chapter, verses);
             }
         });
@@ -764,10 +790,10 @@
             if (document.activeElement === document.getElementById('search-input')) return;
             if (e.key === 'ArrowLeft') {
                 const prevButton = document.getElementById('prev-chapter');
-                if (!prevButton.parentElement.classList.contains('invisible')) prevButton.click();
+                if (!prevButton.classList.contains('hidden')) prevButton.click();
             } else if (e.key === 'ArrowRight') {
                 const nextButton = document.getElementById('next-chapter');
-                if (!nextButton.parentElement.classList.contains('invisible')) nextButton.click();
+                if (!nextButton.classList.contains('hidden')) nextButton.click();
             }
         });
         
@@ -775,13 +801,37 @@
             if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undoAction(); } 
             else if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redoAction(); }
         });
+
+        // 수동 드래그 복사 방지 로직
+        document.addEventListener('copy', (e) => {
+            const selection = document.getSelection();
+            if (!selection.rangeCount) return;
+
+            let node = selection.anchorNode;
+            let isInsideOutput = false;
+            while (node && node !== document.body && node !== document) {
+                if (node.id === 'output-wrapper' || (node.classList && node.classList.contains('output-pane'))) {
+                    isInsideOutput = true;
+                    break;
+                }
+                node = node.parentNode;
+            }
+
+            if (isInsideOutput && !isSearchActive) {
+                let copiedText = selection.toString();
+                copiedText = copiedText.replace(/(?:\r?\n){2,}/g, '\n');
+                e.clipboardData.setData('text/plain', copiedText);
+                e.preventDefault(); 
+            }
+        });
     }
 
+    // 💡 저장 상태에 isCaseSensitive도 기록하여 되돌리기 지원
     function saveState() {
         if (isRestoring) return;
         historyStack.push({
             book: currentBook, chapter: currentChapter, verse: currentVerse,
-            displayMode: displayMode, languageMode: languageMode,
+            displayMode: displayMode, languageMode: languageMode, isCaseSensitive: isCaseSensitive,
             query: document.getElementById('search-input').value,
             outputKr: document.getElementById('output-kr').innerHTML,
             outputEn: document.getElementById('output-en').innerHTML
@@ -794,7 +844,8 @@
         if (historyStack.length === 0) return;
         isRestoring = true;
         redoStack.push({
-            book: currentBook, chapter: currentChapter, verse: currentVerse, displayMode: displayMode, languageMode: languageMode,
+            book: currentBook, chapter: currentChapter, verse: currentVerse, 
+            displayMode: displayMode, languageMode: languageMode, isCaseSensitive: isCaseSensitive,
             query: document.getElementById('search-input').value,
             outputKr: document.getElementById('output-kr').innerHTML,
             outputEn: document.getElementById('output-en').innerHTML
@@ -808,7 +859,8 @@
         if (redoStack.length === 0) return;
         isRestoring = true;
         historyStack.push({
-            book: currentBook, chapter: currentChapter, verse: currentVerse, displayMode: displayMode, languageMode: languageMode,
+            book: currentBook, chapter: currentChapter, verse: currentVerse, 
+            displayMode: displayMode, languageMode: languageMode, isCaseSensitive: isCaseSensitive,
             query: document.getElementById('search-input').value,
             outputKr: document.getElementById('output-kr').innerHTML,
             outputEn: document.getElementById('output-en').innerHTML
@@ -824,15 +876,27 @@
         currentVerse = state.verse;
         displayMode = state.displayMode;
         languageMode = state.languageMode || 'kr';
+        isCaseSensitive = state.isCaseSensitive || false;
 
         document.getElementById('search-input').value = state.query;
         document.getElementById('output-kr').innerHTML = state.outputKr;
         document.getElementById('output-en').innerHTML = state.outputEn || '';
 
-        const formatSelect = document.getElementById('format-select');
-        if (formatSelect) formatSelect.value = displayMode;
+        // 드롭다운 및 버튼 UI 동기화
+        document.getElementById('format-dropdown').value = displayMode;
+        document.getElementById('case-toggle-button').textContent = isCaseSensitive ? '대소문자 구분 함' : '대소문자 구분 안함';
 
-        changeLanguageMode(languageMode);
+        const toggleBtn = document.getElementById('lang-toggle-button');
+        const copyEnBtn = document.getElementById('copy-en-button');
+        if (languageMode === 'kr') {
+            toggleBtn.textContent = '한글 모드';
+            document.getElementById('output-en').classList.add('hidden');
+            copyEnBtn.classList.add('hidden');
+        } else {
+            toggleBtn.textContent = '한영 모드';
+            document.getElementById('output-en').classList.remove('hidden');
+            copyEnBtn.classList.remove('hidden');
+        }
 
         document.querySelectorAll('.book-button').forEach(btn => {
             btn.classList.remove('active');
@@ -848,9 +912,9 @@
                     if (parseInt(btn.getAttribute('data-chapter')) === currentChapter) btn.classList.add('active');
                 });
             }
-            document.getElementById('navigation-buttons').classList.remove('invisible');
+            document.getElementById('navigation-buttons').classList.remove('hidden');
         } else {
-            document.getElementById('navigation-buttons').classList.add('invisible');
+            document.getElementById('navigation-buttons').classList.add('hidden');
         }
         setTimeout(alignVerseHeights, 10);
     }
@@ -868,17 +932,18 @@
         highlights.forEach(h => h.outerHTML = h.textContent);
         const headings = clone.querySelectorAll('h1, h2, h3, h4, h5, h6');
         headings.forEach(h => h.outerHTML = h.textContent + '\n');
+        
         const paras = Array.from(clone.querySelectorAll('p'));
-        if (paras.length > 0) return paras.map(p => p.innerText.trim()).join('\n\n').trim();
+        if (paras.length > 0) {
+            const lineBreak = isSearchActive ? '\n\n' : '\n';
+            return paras.map(p => p.innerText.trim()).join(lineBreak).trim();
+        }
         return clone.innerText.trim();
     }
     
     function changeDisplayMode(mode) {
         displayMode = mode;
-        const formatSelect = document.getElementById('format-select');
-        if (formatSelect && formatSelect.value !== mode) {
-            formatSelect.value = mode;
-        }
+        document.getElementById('format-dropdown').value = mode; // 드롭다운 동기화
         
         if (isSearchActive) {
             clearTimeout(renderTimer); 

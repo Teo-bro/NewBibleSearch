@@ -131,7 +131,6 @@
             setupEventListeners();
             loadInitialData();
             
-            // 초기 복사버튼 및 드롭다운 상태 동기화
             changeLanguageMode(languageMode);
             document.getElementById('format-select').value = displayMode;
         })
@@ -141,7 +140,6 @@
         });
     });
 
-    // 💡 소수점 오차(Sub-pixel) 누적 방지 및 제목/여백 포함 완벽 동기화 함수
     function alignVerseHeights() {
         const krElements = document.querySelectorAll('#output-kr [data-verse-id]');
         const enElements = document.querySelectorAll('#output-en [data-verse-id]');
@@ -253,6 +251,7 @@
         displayChapter(currentBook, chapter);
     }
 
+    // 2. 읽기 모드에서는 무조건 기본 모드로 작동하도록 수정
     function displayChapter(bookName, chapter, highlightVerses = []) {
         isSearchActive = false; 
         clearTimeout(renderTimer);
@@ -272,33 +271,15 @@
         
         const verseNums = Object.keys(verses).map(Number).sort((a, b) => a - b);
         
-        for (let i = 0; i < verseNums.length; i++) {
-            const verseNum = verseNums[i];
+        for (const verseNum of verseNums) {
             const verseTextKr = verses[verseNum];
             const verseTextEn = versesEn[verseNum] || "";
             const isHighlighted = highlightVerses.includes(verseNum);
             const verseNumClass = isHighlighted ? 'verse-number verse-highlight' : 'verse-number';
             const uniqueId = `verse-${bookName}-${chapter}-${verseNum}`;
             
-            let displayVerseKr = verseNum;
-            let displayVerseEn = verseNum;
-
-            if (displayMode === 'continuous') {
-                const abbr = nameToAbbr[bookName] || bookName;
-                const enBookObj = bibleBooks.find(b => b.name === bookName);
-                const enAbbr = enBookObj ? enBookObj.enAbbr : bookName;
-                
-                if (i === 0) {
-                    displayVerseKr = `${abbr} ${chapter}:${verseNum}`;
-                    displayVerseEn = `${enAbbr} ${chapter}:${verseNum}`;
-                } else {
-                    displayVerseKr = `${chapter}:${verseNum}`;
-                    displayVerseEn = `${chapter}:${verseNum}`;
-                }
-            }
-            
-            outputKr += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${bookName} ${chapter}:${verseNum}')" title="${bookName} ${chapter}:${verseNum} 출력 모드로 보기">${displayVerseKr}</span> ${verseTextKr}</p>`;
-            outputEn += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${enBookName} ${chapter}:${verseNum}')" title="${enBookName} ${chapter}:${verseNum} View">${displayVerseEn}</span> ${verseTextEn}</p>`;
+            outputKr += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${bookName} ${chapter}:${verseNum}')" title="${bookName} ${chapter}:${verseNum} 출력 모드로 보기">${verseNum}</span> ${verseTextKr}</p>`;
+            outputEn += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${enBookName} ${chapter}:${verseNum}')" title="${enBookName} ${chapter}:${verseNum} View">${verseNum}</span> ${verseTextEn}</p>`;
         }
         
         document.getElementById('output-kr').innerHTML = outputKr;
@@ -326,7 +307,6 @@
         const isEnglishSearch = /[a-zA-Z]/.test(word);
         const targetData = isEnglishSearch ? bibleDataEn : bibleData;
         
-        // 영어 검색 시 대소문자 구분 체크박스 확인
         const isCaseSensitive = document.getElementById('case-sensitive') ? document.getElementById('case-sensitive').checked : false;
         const flags = isCaseSensitive ? 'g' : 'gi';
         
@@ -412,7 +392,7 @@
                     pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${enBookName} ${chapter}:${verse}</span><br>${highlightedEn}</p>`;
                     break;
                 case 'abbr':
-                case 'continuous': // 검색 결과에서는 연속 모드도 약식과 동일하게 처리
+                case 'continuous': 
                     pKr = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${abbr} ${chapter}:${verse}</span> ${highlightedKr}</p>`;
                     pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${enAbbr} ${chapter}:${verse}</span> ${highlightedEn}</p>`;
                     break;
@@ -455,7 +435,9 @@
         document.getElementById('navigation-buttons').classList.add('invisible');
         
         query = query.replace(/(\d)\.(\d)/g, '$1:$2');
-        const refRegex = /([가-힣]+|\d?\s*[a-zA-Z\s]+?)\s*(\d+)[:]([\d,\-]+)/g;
+        
+        // 4. '솔로몬의 노래' 등 띄어쓰기가 있는 책 이름도 인식하도록 정규식 수정
+        const refRegex = /([가-힣\s]+|\d?\s*[a-zA-Z\s]+?)\s*(\d+)[:]([\d,\-]+)/g;
         let matches = [...query.matchAll(refRegex)];
         let stripped = query.replace(refRegex, '').replace(/[, ]/g, '').trim();
         
@@ -570,6 +552,26 @@
                 const abbr = nameToAbbr[book] || book;
                 const verseNums = groupVerses.map(v => v.verse).sort((a, b) => a - b);
                 
+                // 2. 검색 시에만 작동하는 연속 모드
+                if (displayMode === 'continuous') {
+                    verseNums.forEach((v, i) => {
+                        const textKr = bibleData[book]?.[chapter]?.[v] || "";
+                        const textEn = bibleDataEn[book]?.[chapter]?.[v] || "";
+                        const vLabelKr = i === 0 ? `${abbr} ${chapter}:${v}` : `${chapter}:${v}`;
+                        const vLabelEn = i === 0 ? `${enAbbr} ${chapter}:${v}` : `${chapter}:${v}`;
+                        const uniqueId = `vsearch-${groupIndex}-${i}`;
+                        
+                        outputKr += `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${v}">${vLabelKr}</span> ${textKr}</p>`;
+                        outputEn += `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${v}">${vLabelEn}</span> ${textEn}</p>`;
+                    });
+                    
+                    if (verseGroups.length > 1 && groupIndex < verseGroups.length - 1) {
+                        outputKr += `<div style="margin: 10px 0;" data-verse-id="spacer-${groupIndex}"></div>`;
+                        outputEn += `<div style="margin: 10px 0;" data-verse-id="spacer-${groupIndex}"></div>`;
+                    }
+                    return; // 다음 그룹으로 진행
+                }
+
                 let ranges = [], currentRange = [verseNums[0]];
                 for (let i = 1; i < verseNums.length; i++) {
                     if (verseNums[i] === verseNums[i-1] + 1) currentRange.push(verseNums[i]);
@@ -590,7 +592,6 @@
                         pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">${enBookName} ${chapter}:${verseRef}</span><br>${combinedEn}</p>`;
                         break;
                     case 'abbr':
-                    case 'continuous':
                         pKr = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">${abbr} ${chapter}:${verseRef}</span> ${combinedKr}</p>`;
                         pEn = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">${enAbbr} ${chapter}:${verseRef}</span> ${combinedEn}</p>`;
                         break;
@@ -725,7 +726,6 @@
                 currentChapter = chapter;
                 currentVerse = verses.length > 0 ? verses[0] : null;
                 
-                // 버튼 클릭 이벤트를 강제 발생시키지 않고 함수를 직접 호출해 Ctrl+Z 버그 방지
                 selectBook(book, true, chapter);
                 displayChapter(book, chapter, verses);
             }

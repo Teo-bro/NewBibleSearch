@@ -4,16 +4,16 @@ const versionsMeta = {
     'en': { file: 'bible_data_en.json', name: 'KJV', abbr: 'KJV', isEn: true, data: {} }
 };
 
-let selectedVersions = ['kr']; 
+let selectedVersions = ['kr'];
 
-let currentBook = null; 
-let currentChapter = null; 
-let currentVerse = null; 
-let displayMode = "standard"; 
-let searchMode = "exact"; 
-let isCaseSensitive = false; 
-let currentFontSize = "16px"; 
-let toastTimeout; 
+let currentBook = null;
+let currentChapter = null;
+let currentVerse = null;
+let displayMode = "standard";
+let searchMode = "exact";
+let isCaseSensitive = false;
+let currentFontSize = "16px";
+let toastTimeout;
 
 // 타임 로딩 변수
 let currentSearchResults = [];
@@ -23,11 +23,11 @@ const RENDER_CHUNK_SIZE = 200;
 let isSearchActive = false;
 let renderTimer = null;
 
-let historyStack = []; 
-let redoStack = [];    
-let isRestoring = false; 
+let historyStack = [];
+let redoStack = [];
+let isRestoring = false;
 
-// 💡 대체 이름(altNames) 배열 및 메타데이터
+// 대체 이름(altNames) 배열 및 메타데이터
 const bibleBooks = [
     { name: "창세기", abbr: "창", enName: "Genesis", enAbbr: "Gen", chapters: 50, testament: "old" },
     { name: "출애굽기", abbr: "출", enName: "Exodus", enAbbr: "Exod", chapters: 40, testament: "old" },
@@ -123,7 +123,7 @@ const altAbbrMap = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    const fetchPromises = Object.keys(versionsMeta).map(key => 
+    const fetchPromises = Object.keys(versionsMeta).map(key =>
         fetch(versionsMeta[key].file)
             .then(res => res.json())
             .then(data => {
@@ -134,8 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     let originalName = item.book;
                     let baseBookName = originalName;
 
-                    const bookObj = bibleBooks.find(b => 
-                        b.name === originalName || 
+                    const bookObj = bibleBooks.find(b =>
+                        b.name === originalName ||
                         b.enName.toLowerCase() === originalName.toLowerCase() ||
                         (b.altNames && b.altNames.includes(originalName))
                     );
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     versionsMeta[key].bookNames[baseBookName] = originalName;
-                    
+
                     if (versionsMeta[key].isEn) {
                         versionsMeta[key].bookAbbrs[baseBookName] = bookObj ? bookObj.enAbbr : originalName;
                     } else {
@@ -169,10 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     Promise.all(fetchPromises).then(() => {
-        document.getElementById('output-wrapper').innerHTML = ''; 
+        document.getElementById('output-wrapper').innerHTML = '';
         createBookButtons();
-        initDragAndDrop(); 
-        updateUIBySelectedVersions(); 
+        initDragAndDrop();
+        updateUIBySelectedVersions();
         setupEventListeners();
         loadInitialData();
         document.getElementById('format-dropdown').value = displayMode;
@@ -186,7 +186,7 @@ function escapeRegExp(string) {
 
 function updateUIBySelectedVersions() {
     const wrapper = document.getElementById('output-wrapper');
-    
+
     const prevContents = {};
     selectedVersions.forEach(v => {
         const contentEl = document.getElementById(`content-${v}`);
@@ -200,7 +200,7 @@ function updateUIBySelectedVersions() {
         pane.id = `output-${v}`;
         pane.className = 'output-pane font-malgun';
         pane.style.fontSize = currentFontSize;
-        
+
         const meta = versionsMeta[v];
         let labelHtml = "";
         if (v !== 'kr' && v !== 'en') {
@@ -213,12 +213,12 @@ function updateUIBySelectedVersions() {
                 ${labelHtml}
             </div>
             <div class="pane-content" id="content-${v}">`;
-        
+
         if(prevContents[v]) {
             innerHTML += prevContents[v];
         }
         innerHTML += `</div>`;
-        
+
         pane.innerHTML = innerHTML;
         wrapper.appendChild(pane);
     });
@@ -270,7 +270,7 @@ function initDragAndDrop() {
             const draggable = document.querySelector('.dragging');
             if (draggable) {
                 if (list.id === 'selected-versions-list' && list.children.length >= 4 && !list.contains(draggable)) {
-                    return; 
+                    return;
                 }
                 if (afterElement == null) {
                     list.appendChild(draggable);
@@ -308,7 +308,7 @@ function renderDndLists() {
         li.draggable = true;
         li.dataset.version = vKey;
         li.textContent = versionsMeta[vKey].name;
-        
+
         li.addEventListener('dragstart', () => li.classList.add('dragging'));
         li.addEventListener('dragend', () => {
             li.classList.remove('dragging');
@@ -321,7 +321,7 @@ function renderDndLists() {
             availableList.appendChild(li);
         }
     });
-    
+
     const sortedSelected = [];
     selectedVersions.forEach(v => {
         const el = selectedList.querySelector(`[data-version="${v}"]`);
@@ -333,7 +333,7 @@ function renderDndLists() {
 function updateSelectedVersionsFromUI() {
     const selectedList = document.getElementById('selected-versions-list');
     const newSelected = [...selectedList.children].map(li => li.dataset.version);
-    
+
     if (newSelected.length === 0) {
         showToast('⚠️ 최소 1개 이상의 역본을 선택해야 합니다.');
         renderDndLists();
@@ -343,9 +343,10 @@ function updateSelectedVersionsFromUI() {
     if (JSON.stringify(newSelected) !== JSON.stringify(selectedVersions)) {
         selectedVersions = newSelected;
         updateUIBySelectedVersions();
-        
+
         if (isSearchActive && currentSearchWord) {
-            executeSearch(document.getElementById('search-input').value.trim()); 
+            // 변경된 역본 설정에 맞춰 현재 검색어 다시 렌더링
+            searchWord(currentSearchWord, true);
         } else if (currentBook && currentChapter) {
             displayChapter(currentBook, currentChapter, currentVerse ? [currentVerse] : []);
         }
@@ -354,7 +355,7 @@ function updateSelectedVersionsFromUI() {
 
 function createBookButtons() {
     const sidebar = document.getElementById('bible-buttons-container');
-    sidebar.innerHTML = ''; 
+    sidebar.innerHTML = '';
     let currentTestament = null;
     for (let i = 0; i < bibleBooks.length; i += 3) {
         if (currentTestament === "old" && bibleBooks[i].testament === "new") {
@@ -381,7 +382,7 @@ function createBookButtons() {
 function selectBook(bookName, skipSave = false, targetChapter = 1) {
     if (!skipSave) saveState();
     currentBook = bookName;
-    currentChapter = targetChapter; 
+    currentChapter = targetChapter;
     currentVerse = null;
     document.querySelectorAll('.book-button').forEach(btn => btn.classList.remove('active'));
     const selectedBtn = document.querySelector(`.book-button[data-book="${bookName}"]`);
@@ -424,9 +425,9 @@ function selectChapter(chapter, skipSave = false) {
 }
 
 function displayChapter(bookName, chapter, highlightVerses = []) {
-    isSearchActive = false; 
+    isSearchActive = false;
     clearTimeout(renderTimer);
-    
+
     if (!versionsMeta['kr'].data[bookName] || !versionsMeta['kr'].data[bookName][chapter]) {
         selectedVersions.forEach(v => {
             const c = document.getElementById(`content-${v}`);
@@ -434,32 +435,32 @@ function displayChapter(bookName, chapter, highlightVerses = []) {
         });
         return;
     }
-    
+
     const verseNums = Object.keys(versionsMeta['kr'].data[bookName][chapter]).map(Number).sort((a, b) => a - b);
-    
+
     selectedVersions.forEach(v => {
         const outContent = document.getElementById(`content-${v}`);
         if(!outContent) return;
         const meta = versionsMeta[v];
-        
+
         const displayBookName = meta.bookNames?.[bookName] || bookName;
         const postfix = meta.isEn ? "" : (bookName==="시편"?"편":"장");
-        
+
         let html = `<h2 class="chapter-title" data-verse-id="header">${displayBookName} ${chapter}${postfix}</h2>`;
-        
+
         for (const verseNum of verseNums) {
             const text = meta.data[bookName]?.[chapter]?.[verseNum] || "";
             const isHighlighted = highlightVerses.includes(verseNum);
             const verseNumClass = isHighlighted ? 'verse-number verse-highlight' : 'verse-number';
             const uniqueId = `verse-${bookName}-${chapter}-${verseNum}`;
-            
+
             html += `<p data-verse-id="${uniqueId}"><span class="${verseNumClass}" style="cursor: pointer;" onclick="executeSearch('${displayBookName} ${chapter}:${verseNum}')">${verseNum}</span> ${text}</p>`;
         }
         outContent.innerHTML = html;
     });
 
     document.getElementById('output-wrapper').scrollTop = 0;
-    
+
     setTimeout(() => {
         alignVerseHeights();
         if (highlightVerses.length > 0) {
@@ -469,12 +470,13 @@ function displayChapter(bookName, chapter, highlightVerses = []) {
     }, 50);
 }
 
-function searchWord(word) {
-    saveState();
-    clearTimeout(renderTimer); 
-    
+// skipSave: 역본 변경 시 상태 저장 스킵
+function searchWord(word, skipSave = false) {
+    if (!skipSave) saveState();
+    clearTimeout(renderTimer);
+
     let results = [];
-    
+
     const words = searchMode === 'exact' ? [word] : word.split(/\s+/).filter(w => w.length > 0);
     if (words.length === 0) return;
 
@@ -482,12 +484,12 @@ function searchWord(word) {
     const baseVersionKey = isEnglishSearch && selectedVersions.includes('en') ? 'en' : selectedVersions[0];
     const targetData = versionsMeta[baseVersionKey].data;
     const regexFlags = isCaseSensitive ? 'g' : 'gi';
-    
+
     for (const book in targetData) {
         for (const chapter in targetData[book]) {
             for (const verse in targetData[book][chapter]) {
                 const textTarget = targetData[book][chapter][verse];
-                
+
                 let isMatch = false;
                 if (searchMode === 'exact') {
                     isMatch = new RegExp(escapeRegExp(words[0]), regexFlags).test(textTarget);
@@ -503,12 +505,12 @@ function searchWord(word) {
             }
         }
     }
-    
+
     currentSearchResults = results;
     currentSearchWord = word;
     renderedResultCount = 0;
     isSearchActive = true;
-    
+
     if (results.length === 0) {
         selectedVersions.forEach(v => {
             const c = document.getElementById(`content-${v}`);
@@ -527,48 +529,49 @@ function searchWord(word) {
         });
         summaryText = `'${word}'이(가) ${results.length}개의 구절에서 총 ${totalOccurrences}번 등장합니다.`;
     } else {
-        summaryText = `검색된 구절: 총 ${results.length}개`;
+        summaryText = `해당 조건에 해당하는 ${results.length}개 구절이 검색되었습니다.`;
     }
-    
+
     selectedVersions.forEach((v, idx) => {
         const outContent = document.getElementById(`content-${v}`);
         if(!outContent) return;
         const style = idx === 0 ? "font-size: 1.2em; font-weight: bold;" : "font-size: 1.2em; font-weight: bold; color: transparent; user-select: none;";
         outContent.innerHTML = `<p class="search-header" data-verse-id="header" style="${style}">${summaryText}</p>`;
     });
-    
+
     document.getElementById('output-wrapper').scrollTop = 0;
     renderNextSearchChunk();
-    renderTimer = setTimeout(autoRenderRemaining, 40);
+    // 0.1초 마다 로딩 실행
+    renderTimer = setTimeout(autoRenderRemaining, 100);
 }
 
 function autoRenderRemaining() {
     if (!isSearchActive || renderedResultCount >= currentSearchResults.length) return;
     renderNextSearchChunk();
-    renderTimer = setTimeout(autoRenderRemaining, 40);
+    renderTimer = setTimeout(autoRenderRemaining, 100);
 }
 
 function renderNextSearchChunk(renderAll = false) {
     if (!isSearchActive || renderedResultCount >= currentSearchResults.length) return;
-    
+
     const chunkEnd = renderAll ? currentSearchResults.length : Math.min(renderedResultCount + RENDER_CHUNK_SIZE, currentSearchResults.length);
     const regexFlags = isCaseSensitive ? 'g' : 'gi';
-    
+
     const words = searchMode === 'exact' ? [currentSearchWord] : currentSearchWord.split(/\s+/).filter(w => w.length > 0);
     const highlightRegex = new RegExp('(' + words.map(escapeRegExp).join('|') + ')', regexFlags);
-    
+
     selectedVersions.forEach(v => {
         const outContent = document.getElementById(`content-${v}`);
         if(!outContent) return;
         const meta = versionsMeta[v];
         let html = "";
-        
+
         for (let idx = renderedResultCount; idx < chunkEnd; idx++) {
             const { book, chapter, verse } = currentSearchResults[idx];
             const text = meta.data[book]?.[chapter]?.[verse] || "";
-            
+
             const highlighted = text.replace(highlightRegex, match => `<span class="highlight">${match}</span>`);
-            
+
             const displayBook = meta.bookNames?.[book] || book;
             const displayAbbr = meta.bookAbbrs?.[book] || book;
             const uniqueId = `search-${idx}`;
@@ -578,7 +581,7 @@ function renderNextSearchChunk(renderAll = false) {
                 case 'standard': p = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${displayBook} ${chapter}:${verse}</span><br>${highlighted}</p>`; break;
                 case 'abbr': p = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${displayAbbr} ${chapter}:${verse}</span> ${highlighted}</p>`; break;
                 case 'quote': p = `<p data-verse-id="${uniqueId}">「${highlighted}」<br><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">(${displayBook} ${chapter}:${verse})</span></p>`; break;
-                case 'short-quote': p = `<p data-verse-id="${uniqueId}">「${highlighted}」<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">(${displayAbbr} ${chapter}:${verse})</span></p>`; break; 
+                case 'short-quote': p = `<p data-verse-id="${uniqueId}">「${highlighted}」<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">(${displayAbbr} ${chapter}:${verse})</span></p>`; break;
                 case 'double-quote': p = `<p data-verse-id="${uniqueId}">『${highlighted}』<br><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">(${displayBook} ${chapter}:${verse})</span></p>`; break;
                 case 'double-short-quote': p = `<p data-verse-id="${uniqueId}">『${highlighted}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">(${displayAbbr} ${chapter}:${verse})</span></p>`; break;
                 case 'sequence': p = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verse}">${displayAbbr} ${chapter}:${verse}</span> ${highlighted}</p>`; break;
@@ -587,31 +590,29 @@ function renderNextSearchChunk(renderAll = false) {
         }
         outContent.insertAdjacentHTML('beforeend', html);
     });
-    
+
     renderedResultCount = chunkEnd;
-    
-    if (renderedResultCount >= currentSearchResults.length) {
-        setTimeout(alignVerseHeights, 50);
-    }
+    // 매 청크 렌더링 후 높이 맞춤 실행 (렉이 걸리지 않는 선에서)
+    setTimeout(alignVerseHeights, 10);
 }
 
 function executeSearch(rawQuery) {
     document.getElementById('search-input').value = rawQuery;
     let query = rawQuery.trim();
     if (!query) {
-        selectedVersions.forEach(v => { 
+        selectedVersions.forEach(v => {
             const c = document.getElementById(`content-${v}`);
-            if(c) c.innerHTML = `<p class="error" data-verse-id="header">검색할 단어나 구절을 입력해주세요.</p>`; 
+            if(c) c.innerHTML = `<p class="error" data-verse-id="header">검색할 단어나 구절을 입력해주세요.</p>`;
         });
         return;
     }
     document.getElementById('navigation-buttons').classList.add('hidden');
-    
+
     query = query.replace(/(\d)\.(\d)/g, '$1:$2');
     const refRegex = /((?:\d\s*)?[가-힣a-zA-Z]+(?:\s+[가-힣a-zA-Z]+)*)\s*(\d+)[:]([\d,\-]+)/g;
     let matches = [...query.matchAll(refRegex)];
     let stripped = query.replace(refRegex, '').replace(/[, ]/g, '').trim();
-    
+
     if (matches.length > 0 && stripped.length === 0) {
         parseMultipleReferences(matches, rawQuery);
     } else {
@@ -621,27 +622,27 @@ function executeSearch(rawQuery) {
 
 function parseMultipleReferences(matches, rawQuery) {
     saveState();
-    isSearchActive = false; 
-    clearTimeout(renderTimer); 
+    isSearchActive = false;
+    clearTimeout(renderTimer);
     function clean(str) { return str.replace(/\s+/g, '').toLowerCase().normalize('NFC'); }
-    
+
     const allGroups = [];
-    
+
     for (const match of matches) {
         let bookRaw = match[1];
         let chapter = match[2];
         let versePart = match[3];
         let cleanBookRaw = clean(bookRaw);
-        
-        let bookObj = bibleBooks.find(b => 
-            clean(b.name) === cleanBookRaw || 
-            clean(b.abbr) === cleanBookRaw || 
-            clean(b.enName) === cleanBookRaw || 
-            clean(b.enAbbr) === cleanBookRaw || 
+
+        let bookObj = bibleBooks.find(b =>
+            clean(b.name) === cleanBookRaw ||
+            clean(b.abbr) === cleanBookRaw ||
+            clean(b.enName) === cleanBookRaw ||
+            clean(b.enAbbr) === cleanBookRaw ||
             clean(b.enName).startsWith(cleanBookRaw) ||
             (b.altNames && b.altNames.some(alt => clean(alt) === cleanBookRaw || clean(alt.replace(/[0-9]/g, '')) === cleanBookRaw))
         );
-        
+
         if (!bookObj) {
             selectedVersions.forEach(v => {
                 const c = document.getElementById(`content-${v}`);
@@ -704,7 +705,7 @@ function displayVerseResults(verses, verseGroups = null) {
                 const displayBook = meta.bookNames?.[book] || book;
                 const displayAbbr = meta.bookAbbrs?.[book] || book;
                 const verseNums = groupVerses.map(vv => vv.verse).sort((a, b) => a - b);
-                
+
                 let ranges = [], currentRange = [verseNums[0]];
                 for (let i = 1; i < verseNums.length; i++) {
                     if (verseNums[i] === verseNums[i-1] + 1) currentRange.push(verseNums[i]);
@@ -721,9 +722,9 @@ function displayVerseResults(verses, verseGroups = null) {
                     case 'standard': p = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">${displayBook} ${chapter}:${verseRef}</span><br>${combinedText}</p>`; break;
                     case 'abbr': p = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">${displayAbbr} ${chapter}:${verseRef}</span> ${combinedText}</p>`; break;
                     case 'quote': p = `<p data-verse-id="${uniqueId}">「${combinedText}」<br><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">(${displayBook} ${chapter}:${verseRef})</span></p>`; break;
-                    case 'short-quote': p = `<p data-verse-id="${uniqueId}">「${combinedText}」<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">(${displayAbbr} ${chapter}:${verseRef})</span></p>`; break; 
+                    case 'short-quote': p = `<p data-verse-id="${uniqueId}">「${combinedText}」<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">(${displayAbbr} ${chapter}:${verseRef})</span></p>`; break;
                     case 'double-quote': p = `<p data-verse-id="${uniqueId}">『${combinedText}』<br><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">(${displayBook} ${chapter}:${verseRef})</span></p>`; break;
-                    case 'double-short-quote': p = `<p data-verse-id="${uniqueId}">『${combinedText}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">(${displayAbbr} ${chapter}:${verseRef})</span></p>`; break; 
+                    case 'double-short-quote': p = `<p data-verse-id="${uniqueId}">『${combinedText}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verses="${verseNums.join(',')}">(${displayAbbr} ${chapter}:${verseRef})</span></p>`; break;
                     case 'sequence': {
                         let seq = "";
                         groupVerses.sort((a, b) => a.verse - b.verse).forEach((vv, vIdx) => {
@@ -744,19 +745,19 @@ function displayVerseResults(verses, verseGroups = null) {
             verses.forEach((verseObj, idx) => {
                 const { book, chapter, verse: verseNum } = verseObj;
                 const text = meta.data[book]?.[chapter]?.[verseNum] || "";
-                
+
                 const displayBook = meta.bookNames?.[book] || book;
                 const displayAbbr = meta.bookAbbrs?.[book] || book;
                 const uniqueId = `vs-${idx}`;
-                
+
                 let p = "";
                 switch (displayMode) {
                     case 'standard': p = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">${displayBook} ${chapter}:${verseNum}</span><br>${text}</p>`; break;
                     case 'abbr': p = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">${displayAbbr} ${chapter}:${verseNum}</span> ${text}</p>`; break;
                     case 'quote': p = `<p data-verse-id="${uniqueId}">「${text}」<br><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">(${displayBook} ${chapter}:${verseNum})</span></p>`; break;
-                    case 'short-quote': p = `<p data-verse-id="${uniqueId}">「${text}」<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">(${displayAbbr} ${chapter}:${verseNum})</span></p>`; break; 
+                    case 'short-quote': p = `<p data-verse-id="${uniqueId}">「${text}」<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">(${displayAbbr} ${chapter}:${verseNum})</span></p>`; break;
                     case 'double-quote': p = `<p data-verse-id="${uniqueId}">『${text}』<br><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">(${displayBook} ${chapter}:${verseNum})</span></p>`; break;
-                    case 'double-short-quote': p = `<p data-verse-id="${uniqueId}">『${text}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">(${displayAbbr} ${chapter}:${verseNum})</span></p>`; break; 
+                    case 'double-short-quote': p = `<p data-verse-id="${uniqueId}">『${text}』<span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">(${displayAbbr} ${chapter}:${verseNum})</span></p>`; break;
                     case 'sequence': p = `<p data-verse-id="${uniqueId}"><span class="reference" data-book="${book}" data-chapter="${chapter}" data-verse="${verseNum}" data-verses="${verseNum}">${displayAbbr} ${chapter}:${verseNum}</span> ${text}</p>`; break;
                 }
                 html += p;
@@ -765,7 +766,7 @@ function displayVerseResults(verses, verseGroups = null) {
         outContent.innerHTML = html;
     });
 
-    document.getElementById('output-wrapper').scrollTop = 0; 
+    document.getElementById('output-wrapper').scrollTop = 0;
     setTimeout(alignVerseHeights, 10);
 }
 
@@ -788,7 +789,7 @@ function setupEventListeners() {
 
     document.getElementById('case-sensitive-checkbox').addEventListener('change', (e) => {
         isCaseSensitive = e.target.checked;
-        if (isSearchActive && currentSearchWord) executeSearch(document.getElementById('search-input').value.trim()); 
+        if (isSearchActive && currentSearchWord) executeSearch(document.getElementById('search-input').value.trim());
     });
 
     document.querySelectorAll('.btn-size').forEach(btn => {
@@ -796,10 +797,10 @@ function setupEventListeners() {
     });
 
     document.getElementById('format-dropdown').addEventListener('change', (e) => changeDisplayMode(e.target.value));
-    
+
     document.getElementById('search-mode-dropdown').addEventListener('change', (e) => {
         searchMode = e.target.value;
-        if (isSearchActive && currentSearchWord) executeSearch(document.getElementById('search-input').value.trim()); 
+        if (isSearchActive && currentSearchWord) executeSearch(document.getElementById('search-input').value.trim());
     });
 
     document.getElementById('search-button').addEventListener('click', () => {
@@ -808,7 +809,7 @@ function setupEventListeners() {
         document.querySelectorAll('.book-button.active, .chapter-button.active').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.chapter-container').forEach(container => container.remove());
     });
-    
+
     document.getElementById('search-input').addEventListener('keydown', (event) => {
         if (event.key === 'Enter') document.getElementById('search-button').click();
     });
@@ -820,12 +821,12 @@ function setupEventListeners() {
             const chapter = parseInt(ref.getAttribute('data-chapter'));
             const versesAttr = ref.getAttribute('data-verses');
             const verses = versesAttr ? versesAttr.split(',').map(v => parseInt(v)) : [];
-            
+
             saveState();
             currentBook = book;
             currentChapter = chapter;
             currentVerse = verses.length > 0 ? verses[0] : null;
-            
+
             document.querySelectorAll('.book-button').forEach(btn => btn.classList.remove('active'));
             const bookBtn = document.querySelector(`.book-button[data-book="${book}"]`);
             if (bookBtn) bookBtn.classList.add('active');
@@ -841,7 +842,7 @@ function setupEventListeners() {
             displayChapter(book, chapter, verses);
         }
     });
-    
+
     document.getElementById('prev-chapter').addEventListener('click', () => {
         if (!currentBook || !currentChapter) return;
         saveState();
@@ -854,7 +855,7 @@ function setupEventListeners() {
             }
         }
     });
-    
+
     document.getElementById('next-chapter').addEventListener('click', () => {
         if (!currentBook || !currentChapter) return;
         saveState();
@@ -868,7 +869,7 @@ function setupEventListeners() {
             }
         }
     });
-    
+
     document.addEventListener('keydown', (e) => {
         if (document.activeElement === document.getElementById('search-input')) return;
         if (e.key === 'ArrowLeft') {
@@ -877,7 +878,7 @@ function setupEventListeners() {
         } else if (e.key === 'ArrowRight') {
             const nextButton = document.getElementById('next-chapter');
             if (!nextButton.classList.contains('hidden')) nextButton.click();
-        } else if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undoAction(); } 
+        } else if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undoAction(); }
           else if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redoAction(); }
     });
 
@@ -897,12 +898,10 @@ function setupEventListeners() {
 
         if (isInsideOutput && !isSearchActive) {
             let copiedText = selection.toString();
-            
-            // 🔥 수정된 부분: 복사 시 줄바꿈(\n\n)을 유지하여 빈 줄을 만들어줍니다.
+            // 연속된 줄바꿈을 2개로 유지
             copiedText = copiedText.replace(/(?:\r?\n){2,}/g, '\n\n');
-            
             e.clipboardData.setData('text/plain', copiedText);
-            e.preventDefault(); 
+            e.preventDefault();
         }
     });
 }
@@ -910,11 +909,11 @@ function setupEventListeners() {
 function saveState() {
     if (isRestoring) return;
     const htmlState = {};
-    selectedVersions.forEach(v => { 
+    selectedVersions.forEach(v => {
         const c = document.getElementById(`content-${v}`);
-        if(c) htmlState[v] = c.innerHTML; 
+        if(c) htmlState[v] = c.innerHTML;
     });
-    
+
     historyStack.push({
         book: currentBook, chapter: currentChapter, verse: currentVerse,
         displayMode: displayMode, isCaseSensitive: isCaseSensitive, searchMode: searchMode,
@@ -922,7 +921,7 @@ function saveState() {
         selected: [...selectedVersions],
         html: htmlState
     });
-    redoStack = []; 
+    redoStack = [];
     if (historyStack.length > 50) historyStack.shift();
 }
 
@@ -930,12 +929,12 @@ function undoAction() {
     if (historyStack.length === 0) return;
     isRestoring = true;
     const htmlState = {};
-    selectedVersions.forEach(v => { 
+    selectedVersions.forEach(v => {
         const c = document.getElementById(`content-${v}`);
-        if(c) htmlState[v] = c.innerHTML; 
+        if(c) htmlState[v] = c.innerHTML;
     });
     redoStack.push({
-        book: currentBook, chapter: currentChapter, verse: currentVerse, 
+        book: currentBook, chapter: currentChapter, verse: currentVerse,
         displayMode: displayMode, isCaseSensitive: isCaseSensitive, searchMode: searchMode,
         query: document.getElementById('search-input').value,
         selected: [...selectedVersions], html: htmlState
@@ -948,12 +947,12 @@ function redoAction() {
     if (redoStack.length === 0) return;
     isRestoring = true;
     const htmlState = {};
-    selectedVersions.forEach(v => { 
+    selectedVersions.forEach(v => {
         const c = document.getElementById(`content-${v}`);
-        if(c) htmlState[v] = c.innerHTML; 
+        if(c) htmlState[v] = c.innerHTML;
     });
     historyStack.push({
-        book: currentBook, chapter: currentChapter, verse: currentVerse, 
+        book: currentBook, chapter: currentChapter, verse: currentVerse,
         displayMode: displayMode, isCaseSensitive: isCaseSensitive, searchMode: searchMode,
         query: document.getElementById('search-input').value,
         selected: [...selectedVersions], html: htmlState
@@ -966,7 +965,7 @@ function restoreState(state) {
     currentBook = state.book; currentChapter = state.chapter; currentVerse = state.verse;
     displayMode = state.displayMode; isCaseSensitive = state.isCaseSensitive || false;
     searchMode = state.searchMode || 'exact';
-    
+
     if (JSON.stringify(selectedVersions) !== JSON.stringify(state.selected)) {
         selectedVersions = [...state.selected];
         renderDndLists();
@@ -1012,12 +1011,12 @@ function prepareContentForCopy(outputElement) {
     });
     const firstP = clone.querySelector('p');
     if (firstP && firstP.textContent.includes('구절에서 총') || (firstP && firstP.textContent.includes('검색된 구절:'))) firstP.remove();
-    
+
     const highlights = clone.querySelectorAll('.highlight');
     highlights.forEach(h => h.outerHTML = h.textContent);
     const headings = clone.querySelectorAll('h1, h2, h3, h4, h5, h6');
     headings.forEach(h => h.outerHTML = h.textContent + '\n');
-    
+
     const paras = Array.from(clone.querySelectorAll('p'));
     if (paras.length > 0) return paras.map(p => p.innerText.trim()).join('\n\n').trim();
     return clone.innerText.trim();
@@ -1025,19 +1024,19 @@ function prepareContentForCopy(outputElement) {
 
 function changeDisplayMode(mode) {
     displayMode = mode;
-    document.getElementById('format-dropdown').value = mode; 
-    
+    document.getElementById('format-dropdown').value = mode;
+
     if (isSearchActive) {
-        clearTimeout(renderTimer); 
+        clearTimeout(renderTimer);
         renderedResultCount = 0;
-        
+
         let summaryText = "";
         if (searchMode === 'exact') {
             const words = [currentSearchWord];
             const regexFlags = isCaseSensitive ? 'g' : 'gi';
             const exactRegex = new RegExp(escapeRegExp(words[0]), regexFlags);
             let totalOccurrences = 0;
-            
+
             const isEnglishSearch = /[a-zA-Z]/.test(words[0]);
             const baseVersionKey = isEnglishSearch && selectedVersions.includes('en') ? 'en' : selectedVersions[0];
             const targetData = versionsMeta[baseVersionKey].data;
@@ -1048,7 +1047,7 @@ function changeDisplayMode(mode) {
             });
             summaryText = `'${currentSearchWord}'이(가) ${currentSearchResults.length}개의 구절에서 총 ${totalOccurrences}번 등장합니다.`;
         } else {
-            summaryText = `검색된 구절: 총 ${currentSearchResults.length}개`;
+            summaryText = `해당 조건에 해당하는 ${currentSearchResults.length}개 구절이 검색되었습니다.`;
         }
 
         selectedVersions.forEach((v, idx) => {
@@ -1058,7 +1057,7 @@ function changeDisplayMode(mode) {
         });
         document.getElementById('output-wrapper').scrollTop = 0;
         renderNextSearchChunk();
-        renderTimer = setTimeout(autoRenderRemaining, 40);
+        renderTimer = setTimeout(autoRenderRemaining, 100);
     } else {
         const query = document.getElementById('search-input').value;
         const outputHTML = document.getElementById(`content-${selectedVersions[0]}`)?.innerHTML || "";
@@ -1088,8 +1087,8 @@ function showToast(message) {
 
 function copyContent(versionKey) {
     if (isSearchActive && renderedResultCount < currentSearchResults.length) {
-        clearTimeout(renderTimer); 
-        renderNextSearchChunk(true); 
+        clearTimeout(renderTimer);
+        renderNextSearchChunk(true);
     }
 
     const output = document.getElementById(`content-${versionKey}`);
@@ -1101,7 +1100,7 @@ function copyContent(versionKey) {
     const contentToCopy = prepareContentForCopy(output);
     const versionName = versionsMeta[versionKey].name;
     const successMessage = `✅ ${versionName} 본문이 복사되었습니다.`;
-    
+
     navigator.clipboard.writeText(contentToCopy)
         .then(() => showToast(successMessage))
         .catch(err => {

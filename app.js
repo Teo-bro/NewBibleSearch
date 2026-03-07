@@ -615,6 +615,33 @@ function renderNextSearchChunk(renderAll = false) {
 function executeSearch(rawQuery) {
     document.getElementById('search-input').value = rawQuery;
     let query = rawQuery.trim();
+    if (query.toLowerCase() === "성경검색기") {
+        isSearchActive = false;
+        clearTimeout(renderTimer);
+        document.getElementById('navigation-buttons').classList.add('hidden');
+        
+        selectedVersions.forEach((v, idx) => {
+            const outContent = document.getElementById(`content-${v}`);
+            if (outContent) {
+                if (idx === 0) {
+                    // 첫 번째 화면에 띄울 이스터에그 내용 (HTML 태그 사용 가능)
+                    outContent.innerHTML = `
+                        <div style="text-align: center; padding: 50px 20px; font-family: 'Malgun Gothic', sans-serif;">
+                            <h2 style="color: #4a90e2; margin-bottom: 20px;">🎉 이스터에그 발견! 🎉</h2>
+                            <p style="font-size: 1.2em; line-height: 1.6;">
+                                개발자를 위한 숨겨진 특별 메시지입니다.<br>
+                                이 화면은 일반적인 성경 검색으로는 나타나지 않습니다. 축복합니다! 🙏
+                            </p>
+                        </div>
+                    `;
+                } else {
+                    outContent.innerHTML = ""; // 나머지 화면은 깔끔하게 비워둠
+                }
+            }
+        });
+        document.getElementById('output-wrapper').scrollTop = 0;
+        return; // 이스터에그가 발동되면 여기서 함수를 강제 종료하여 일반 검색이 안 돌아가게 막음!
+    }
     if (!query) {
         selectedVersions.forEach(v => {
             const c = document.getElementById(`content-${v}`);
@@ -1133,5 +1160,6 @@ function copyContent(versionKey) {
             document.body.removeChild(tempTextArea);
         });
 }
+
 
 

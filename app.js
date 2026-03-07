@@ -645,7 +645,7 @@ function executeSearch(rawQuery) {
                             <h3 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px;">3. 기능 설명</h3>
                             
                             <h4 style="margin-bottom: 5px; color: #555;">3-1. 읽기 모드</h4>
-                            <p style="margin-top: 0;">좌측의 성경 버튼과 장 버튼을 통해 원하는 장을 출력하여 읽을 수 있습니다.<br>이 경우 이전/다음 장 버튼이나 키보드 방향키를 통해 출력 장을 옮길 수 있습니다.<br>출력된 절의 숫자를 클릭하면 그 구절만 출력됩니다.<br>역본 설정에서 원하는 역본을 드래그하여 추가/삭제 가능합니다. 순서도 자유롭게 바꿀 수 있습니다.</p>
+                            <p style="margin-top: 0;">좌측의 성경 버튼과 장 버튼을 통해 원하는 장을 출력하여 읽을 수 있습니다.<br>이 경우 이전/다음 장 버튼이나 키보드 방향키를 통해 출력 장을 옮길 수 있습니다.<br>출력된 절의 숫자를 클릭하면 그 구절만 출력됩니다.<br>역본 설정에서 원하는 역본을 드래그하여 추가/삭제 가능합니다.<br>순서도 자유롭게 바꿀 수 있습니다.</p>
                             
                             <h4 style="margin-bottom: 5px; color: #555; margin-top: 20px;">3-2. 검색 모드</h4>
                             <p style="margin-top: 0;">검색창에 단어를 검색하거나 구절 주소를 검색하여 해당 구절을 출력할 수 있습니다.<br>단어 검색 시 총 등장 구절의 횟수와 등장 횟수가 출력됩니다.<br>검색한 단어는 노란색으로 표시됩니다.</p>
@@ -1229,6 +1229,7 @@ function copyContent(versionKey) {
             document.body.removeChild(tempTextArea);
         });
 }
+
 
 
 

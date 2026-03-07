@@ -4,7 +4,7 @@ const versionsMeta = {
     'en': { file: 'bible_data_en.json', name: 'KJV', abbr: 'KJV', isEn: true, data: {} }
 };
 
-let selectedVersions = ['kr'];
+let selectedVersions = ['kr', 'en'];
 
 let currentBook = null;
 let currentChapter = null;
@@ -1229,6 +1229,7 @@ function copyContent(versionKey) {
             document.body.removeChild(tempTextArea);
         });
 }
+
 
 
 

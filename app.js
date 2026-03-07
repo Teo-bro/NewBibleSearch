@@ -497,7 +497,7 @@ function searchWord(word, skipSave = false) {
     if (words.length === 0) return;
 
     const isEnglishSearch = /[a-zA-Z]/.test(words[0]);
-    const baseVersionKey = isEnglishSearch && selectedVersions.includes('en') ? 'en' : selectedVersions[0];
+    const baseVersionKey = isEnglishSearch ? 'en' : 'kr';
     const targetData = versionsMeta[baseVersionKey].data;
     const regexFlags = isCaseSensitive ? 'g' : 'gi';
 
@@ -1133,4 +1133,5 @@ function copyContent(versionKey) {
             document.body.removeChild(tempTextArea);
         });
 }
+
 
